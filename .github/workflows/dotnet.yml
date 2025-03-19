@@ -1,0 +1,50 @@
+name: .NET Core CI/CD Pipeline
+
+on:
+  push:
+    branches:
+      - '*'  # Trigger on commits to any branch
+  pull_request:
+    branches:
+      - '*'  # Trigger on pull requests to any branch
+
+jobs:
+  build:
+    runs-on: windows-latest  # Use a Windows runner as you're targeting the C: drive
+
+    strategy:
+      matrix:
+        sdk: [ '8.0']  # Specify the SDK versions you're using
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v2
+
+    - name: Set up .NET SDK
+      uses: actions/setup-dotnet@v2
+      with:
+        dotnet-version: ${{ matrix.sdk }}  # Dynamically set the .NET version
+
+    - name: Restore dependencies
+      run: |
+        dotnet restore OrderTakingSystem/OrderTakingSystem.csproj
+        dotnet restore OrderTakingSystem.Tests/OrderTakingSystem.Tests.csproj
+
+    - name: Build the projects
+      run: |
+        dotnet build OrderTakingSystem/OrderTakingSystem.csproj --configuration Release
+        dotnet build OrderTakingSystem.Tests/OrderTakingSystem.Tests.csproj --configuration Release
+
+    - name: Run tests
+      run: |
+        dotnet test OrderTakingSystem.Tests/OrderTakingSystem.Tests.csproj --configuration Release --no-build --verbosity normal
+
+    - name: Publish the application (optional)
+      run: |
+        dotnet publish OrderTakingSystem/OrderTakingSystem.csproj --configuration Release --output ./publish
+
+    # Failure Steps (Only run if tests fail or any step fails)
+    - name: Failure message (if tests fail)
+      if: failure()  # This ensures this step only runs if there is a failure
+      run: |
+        echo "Tests failed or an error occurred in the build process. Please fix the issues and try again."
